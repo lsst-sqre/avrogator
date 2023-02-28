@@ -14,11 +14,20 @@ def main() -> None:
     Emitter class with those arguments, and execute the translation.
     """
     parser = argparse.ArgumentParser(
-        description="Convert JSON to Avro single-object encoding"
+        description=(
+            "Convert JSON to Avro binary (optionally with "
+            + "single-object encoding)"
+        )
     )
     parser.add_argument("-m", "--message", help="Input message file (JSON)")
     parser.add_argument("-s", "--schema", help="Input schema file (JSON)")
     parser.add_argument("-o", "--output", help="Output Avro file")
+    parser.add_argument(
+        "--single-object",
+        action="store_true",
+        default=False,
+        help="Prepend Avro magic bytes and schema ID to output",
+    )
     args = parser.parse_args()
     emitter = Emitter(
         schema_file=Path(args.schema),

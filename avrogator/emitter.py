@@ -1,6 +1,7 @@
 """This class takes a schema file (JSON), a message (JSON, a single dict),
-and an output file path, and it transforms the message into an Avro single
-object record with the schema fingerprint.
+and an output file path, and it transforms the message into Avro binary.
+If single_object is specified, it writes the message with Avro magic bytes
+and a schema ID at the front.
 
 This is primarily intended to generate test data for the InfluxDB
 Telegraf Avro parser plugin.
@@ -21,10 +22,12 @@ class Emitter:
         schema_file: Optional[Path] = None,
         message_file: Optional[Path] = None,
         output_file: Optional[Path] = None,
+        single_object: bool = False,
     ) -> None:
         self.schema: Dict[str, Any] = None
         self.message: Dict[str, Any] = dict()
         self.output_file: Optional[Path] = output_file
+        self.single_object = single_object
         if schema_file:
             self.set_schema(schema_file)
         if message_file:
@@ -50,14 +53,15 @@ class Emitter:
             raise RuntimeError("Output file required")
         if not self.schema:
             raise RuntimeError("Schema required")
-        fingerprint = fastavro.schema.fingerprint(
-            fastavro.schema.to_parsing_canonical_form(self.schema),
-            "CRC-64-AVRO",
-        )
-        # Fingerprint is big-endian hex/text, so change that...
-        bin_fingerprint = bytearray.fromhex(fingerprint)[::-1]
-        avro_magic = b"\xC3\x01"
         with open(self.output_file, "wb") as f:
-            f.write(avro_magic)
-            f.write(bin_fingerprint)
+            if self.single_object:
+                fingerprint = fastavro.schema.fingerprint(
+                    fastavro.schema.to_parsing_canonical_form(self.schema),
+                    "CRC-64-AVRO",
+                )
+                # Fingerprint is big-endian hex/text, so change that...
+                bin_fingerprint = bytearray.fromhex(fingerprint)[::-1]
+                avro_magic = b"\xC3\x01"
+                f.write(avro_magic)
+                f.write(bin_fingerprint)
             fastavro.schemaless_writer(f, self.schema, self.message)
