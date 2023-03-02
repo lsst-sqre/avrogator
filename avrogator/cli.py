@@ -33,5 +33,6 @@ def main() -> None:
         schema_file=Path(args.schema),
         message_file=Path(args.message),
         output_file=Path(args.output),
+        single_object=args.single_object,
     )
     emitter.emit()
